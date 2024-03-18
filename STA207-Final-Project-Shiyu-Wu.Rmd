@@ -1,0 +1,525 @@
+---
+title: "Final Project"
+author: "Shiyu Wu"
+date: "Mar 17th, 2024"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+    number_section: yes
+    toc: true
+    toc_float:
+      collapsed: false
+    fig caption: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H')
+```
+
+
+
+```{r,include=FALSE}
+# Loading all libraries and data
+library(AER)
+library(dplyr)
+library(ggplot2)
+library(SuppDists)
+library(haven)
+library(naniar)
+library(s20x)
+library(car)
+library(lme4)
+library(MASS)
+STAR<-read_sav("STAR_Students.sav")
+```
+
+# Abstract
+
+The project aims to discuss the effect of class size on students' academic performance. In this project, the author explores and aggregates the data distributions of 1st-grade students in the STAR program. To further investigate the connection between class type and students' academic performances, specifically their math grades, the author sets up two Two-Way ANOVA models to analyze average and median math scaled scores across different classes. However, some assumptions in the models are violated. To address this issue, a mixed-effect model is applied. Consequently, the mixed-effect model confirms the effect between class size and median math grade with no assumption violations.
+
+# Introduction
+
+This project primarily focuses on first-grade students in the Tennessee Student Teacher Achievement Ratio (STAR) program. The study randomly assigns students to small, regular, and regular-with-teacher-aide classes to establish a randomized experiment. Its objective is to help policymakers understand the effect of class size by exploring the potential relationship between class size and students' academic performance, using each teacher as the basic unit of analysis. Since some students participated in the STAR program in kindergarten while others did not, and STAR programs could potentially affect volunteers' academic performance, the results of this project might be influenced. The project encompasses exploratory data analysis, two-way ANOVA, model diagnostics, hypothesis testing, and other analytical methods.
+
+# Background
+
+The data used in this project is sourced from the Tennessee Student Teacher Achievement Ratio (STAR) programs conducted in schools between 1985 and 1989. The target population comprises students in the American K-12 education system from kindergarten to third grade. However, the focus of this project is solely on first-grade data. To conduct the randomized experiment, all participants agreed to be randomly assigned to three different class conditions: small, regular, and regular with a full-time aide. The main academic performances of the students are measured by their math and reading scaled scores, with this project specifically utilizing the math scaled score as the standard. The variables utilized in this project are as follows:
+
+* **g1classtype**: The type of class, including small, regular, and regular with a full-time aide.
+
+* **g1schid**: The school ID for the school to which the class belongs.
+
+* **g1surban**: The school's classification, including inner-city, suburban, rural, and urban.
+
+* **g1tchid**: The teacher ID for the teacher responsible for the class.
+
+* **g1tgen**: The teacher's gender.
+
+* **g1trace**: The teacher's race.
+
+* **g1thighdegree**: The teacher's highest degree.
+
+* **gt1tcareerL**: The teacher's career ladder level.
+
+* **g1tyears**: The teacher's years of teaching experience.
+
+* **g1tmathss**: The student's math scaled score
+
+# Descriptive analysis
+
+## Variable Selection
+
+```{r,echo=FALSE,fig.width=10}
+# Select variables related to 1st student's math score
+STAR.1st<-STAR[,c("g1tmathss","g1classtype","g1schid","g1surban","g1tchid","g1trace","g1thighdegree","g1tcareer","g1tyears")]
+
+# Select variables to find the missing value pattern across 3 years 
+STAR.3yr<-STAR[,c("g1tmathss","g2tmathss","g3tmathss","g1classtype","g2classtype","g3classtype","g1surban","g2surban","g3surban")]
+
+# Visualize the missing data for each column
+vis_miss(STAR.3yr,cluster = TRUE)
+gg_miss_var(STAR.1st)
+```
+
+In the first graph, the black area represents missing values for each observation over the span of three years. The patterns in the graphs of missing values for math scores, class types, and school locations are all similar. This finding suggests that the missing data are primarily due to students leaving the STAR program in certain years.
+
+In the second graph, we examine all fields relevant to first-grade class type and math scores to observe their missing values. In conclusion, all fields show approximately the same amount of missing values, totaling 4500 observations. This conclusion strongly supports the assumption made in the first graph.
+
+Thus, we intend to remove the samples of students who did not participate in the STAR program during their first grade to observe any differences.
+
+```{r,echo=FALSE}
+# delete the samples not participating STAR program in 1st grade
+STAR<-STAR[STAR$FLAGSG1==1,]
+
+# Update data
+STAR.1st<-STAR[,c("g1tmathss","g1classtype","g1schid","g1surban","g1tchid","g1trace","g1thighdegree","g1tcareer","g1tyears")]
+STAR.3yr<-STAR[,c("g1tmathss","g2tmathss","g3tmathss","g1classtype","g2classtype","g3classtype","g1surban","g2surban","g3surban")]
+
+# Visualize the missing data for each column
+vis_miss(STAR.3yr,cluster = TRUE)
+gg_miss_var(STAR.1st)
+
+```
+
+As a result, the missing values in the first-grade dataset have been significantly reduced. Theoretically, this action is necessary since our goal is to identify the potential causal effect between class type and first-grade students' math scaled scores. Therefore, if a student did not participate in the STAR study during their first grade, we should disregard and delete the data for that particular sample.
+
+```{r,include=FALSE}
+# Aggregate the data at the class level
+STAR.class.level<-STAR.1st %>%
+  group_by(g1classtype,g1schid,g1surban,g1tchid,g1trace,g1thighdegree,g1tcareer,g1tyears) %>%
+  summarise(g1tavgmath=mean(g1tmathss,na.rm = TRUE),
+            g1tmedmath=median(g1tmathss,na.rm = TRUE))
+
+# Factorize the categorical data
+STAR.class.level$g1classtype<-as.factor(STAR.class.level$g1classtype)
+STAR.class.level$g1schid<-as.factor(STAR.class.level$g1schid)
+STAR.class.level$g1surban<-as.factor(STAR.class.level$g1surban)
+STAR.class.level$g1tchid<-as.factor(STAR.class.level$g1tchid)
+STAR.class.level$g1trace<-as.factor(STAR.class.level$g1trace)
+STAR.class.level$g1thighdegree<-as.factor(STAR.class.level$g1thighdegree)
+STAR.class.level$g1tcareer<-as.factor(STAR.class.level$g1tcareer)
+
+# Provide the summary statistic
+summary(STAR.class.level)
+```
+
+Based on the Stable Unit Treatment Value Assumption, investigating class-level average math scaled scores is preferable to student-level grades. This is because individual students can easily influence each other, whereas one class is unlikely to interfere with another class, even if they are in the same school.
+
+In this project, the following variables relevant to first-grade classes have been chosen:
+
+* **g1classtype**: The type of class, including small, regular, and regular+aide.
+
+* **g1schid**: The school id for the school that the class belongs to.
+
+* **g1surban**: The school's type, including inner-city, suburban, rural, and urban.
+
+* **g1tchid**: The teacher ID for the teacher responsible to the class.
+
+* **g1tgen**: The teacher's gender.
+
+* **g1trace**: The teacher's race.
+
+* **g1thighdegree**: The teacher's highest degree.
+
+* **gt1tcareerL**: The teacher's career ladder level.
+
+* **g1tyears**: The teacher's years of teaching experience.
+
+* **g1tavgmath**: The class's average math scaled score for the students.
+
+* **g1tmedmath**: The class's median math scaled score for the students.
+
+From the summary statistics, in the first-grade section of the STAR program, most teachers are Caucasian, apprentices, or hold bachelor's degrees. Among these teachers, there is one professional with 42 years of teaching experience, which may influence the analysis results. Additionally, the majority of schools are located in rural areas. The distribution of class types, teachers, and school IDs is relatively uniform. The median for average and median math scaled scores across all classes is close to 532, while the mean for average and median math scaled scores across all classes is close to 531.
+
+
+## Descriptive Statistic and Visualization
+
+```{r,echo=FALSE,fig.height=6,fig.width=8,warning=FALSE}
+# Box-plot and violin plot for math grade v.s. class type
+ggplot(STAR.class.level,aes(x=g1classtype,y=g1tavgmath))+geom_boxplot()+
+  labs(x="",y="Average Math Grade")+
+  stat_summary(fun="mean")
+  
+
+ggplot(STAR.class.level,aes(x=g1classtype,y=g1tavgmath))+geom_violin()+
+  labs(x="",y="Average Math Grade")
+```
+
+In the box plot, the small class exhibits the best performance as indicated by its highest mean, median, upper, and lower quantiles. When comparing regular and aide classes, they have approximately equal medians, but the box for aide classes is larger than for regular classes. These results suggest that students in aide classes may have less consistent performance compared to those in regular classes.
+
+In the violin plot, the small and regular classes display nearly symmetric shapes, whereas the aide class has more portions at the bottom. This implies that the majority of classes in the aide category have mean math scores smaller than the average, while regular and small classes have similar mean and median scores.
+
+In conclusion, there appears to be a linear association between class type and the class's average math score.
+
+***
+
+```{r,echo=FALSE,fig.height=6,fig.width=8}
+# Box-plot and violin plot for math grade v.s. school type
+ggplot(STAR.class.level,aes(x=g1schid,y=g1tavgmath))+geom_boxplot()+
+  labs(x="",y="Average Math Grade")
+```
+
+The effect between each school and math grades is also significant and warrants exploration. However, based on the plots above, conducting descriptive analysis is challenging. Therefore, it is necessary to include a discussion on school locations and average math scaled scores across all classes
+
+***
+
+```{r,echo=FALSE,fig.height=6,fig.width=8}
+# Box-plot and violin plot for math grade v.s. school type
+ggplot(STAR.class.level,aes(x=g1surban,y=g1tavgmath))+geom_boxplot()+
+  labs(x="",y="Average Math Grade")
+ggplot(STAR.class.level,aes(x=g1surban,y=g1tavgmath))+geom_violin()+
+  labs(x="",y="Average Math Grade")
+```
+
+Since there are numerous schools with randomly assigned IDs, the project utilizes the field of school type to generate more direct plots and glean valuable insights.
+
+From the box plot, it's observed that urban schools have the highest average math grades per class, while inner-city schools have the lowest. The box representing rural schools is the smallest, suggesting that students in these schools tend to have more consistent math grades.
+
+In the violin plot, urban and inner-city schools exhibit a tendency to have more classes with average math scores lower than the overall average, whereas suburban and rural schools display symmetric distributions of average math grades across classes. Additionally, classes in rural schools tend to cluster more closely around the mean for average math scores per class.
+
+In conclusion, there appears to be a linear association between school type and the class's average math score.
+
+# Inferential analysis
+
+## Two-Way ANOVA Model
+
+Set up a Two-Way ANOVA Model as below:
+$$
+Y_{ijk}=\mu_{..}+\alpha_i+\beta_j+\epsilon_{ijk}
+$$
+
+* $i$ represents the level of the class type, where $i=1$ implies the small-size class, $i=2$ implies the regular class, and $i=3$ implies the regular class with an aide.
+
+* $j$ represents the level of the school type. Since there are 72 schools in total, $j$ ranges from 1 to 72.
+
+* $Y_{ijk}$ is the dependent variable in this model, representing the average math scaled scores for the $k$th teacher with the $i$th class type in the $j$th school.
+
+* $\mu_{..}$ is the overall average math scaled score across all class types and schools, calculated as $\mu_{..}=\frac{1}{3n_j}\sum_{i=1}^3\sum_{j=1}^{n_j}\mu_{ij}$.
+
+* $\alpha_i$ represents the fixed effect of the $i$th class type.
+
+* $\beta_j$ represents the fixed effect of the $j$th school type.
+
+* $\epsilon_{ijk}$ represents the random error for the $k$th teacher with the $i$th class type in the $j$th school.
+
+Assumptions:
+
+* $\epsilon_{ijk}\sim N(0,\sigma^2)$, where $\sigma^2$ is a constant. Each $\epsilon_{i,j,k}$ should be independent of each other.
+
+* To satisfy the requirement of a randomized experiment, the observations (average math scaled scores) are independent across all groups.
+
+* The residuals should be normally distributed across all groups.
+
+* The variance of the average math scaled scores across all groups should be normally distributed.
+
+Constraints:
+
+* $\sum_{i=1}^3\alpha_i=0$
+
+* $\sum_{j=1}^{n_j}\beta_j=0$
+
+***
+
+Since this project is solely focused on examining the potential treatment effect between class type and math scaled score, and the school ID serves as a control variable, we opt to discard the interaction term in our Two-Way ANOVA Model.
+
+```{r,echo=FALSE}
+# Fit the original and simplified Two-way ANOVA model
+anova.fit<-aov(g1tavgmath~g1classtype+g1schid,data = STAR.class.level)
+anova.fit2<-aov(g1tavgmath~g1classtype+g1surban,data = STAR.class.level)
+print(anova.fit2$coefficients)
+```
+
+Since there are numerous schools, providing summary statistics for the model regarding school ID would not yield meaningful descriptive results. Instead, a model incorporating school location should offer a more direct view. By providing the coefficients of this simplified model, it is evident that classes from the small class (with $\alpha_1=0$) have higher average math scaled grades compared to regular and regular with aide classes (with $\alpha_2=-12.82$ and $\alpha_3=-9.88323$, respectively). It is also notable that classes from inner-city schools (with $\beta_1=0$) exhibit relatively low average math scaled grades. Conversely, classes from suburban (with $\beta_2=24.34$), rural (with $\beta_3=28.98$), and urban (with $\beta_4=25.26$) areas have similar mean math grades. Among them, rural classes tend to have the highest average math scaled scores.
+
+## Box-Cox Transformation
+
+```{r,echo=FALSE}
+# Box-Cox Test
+boxcox(aov(g1tavgmath~g1classtype+g1schid,data = STAR.class.level))
+```
+
+The suggested transformation is a reciprocal transformation, $\frac{1}{x}$, for the average math scaled score according to the Box-Cox function.
+
+```{r,include=FALSE}
+# Box-Cox Transformation and fit the model
+STAR.class.level$g1tavgmath<-1/STAR.class.level$g1tavgmath
+anova.fit<-aov(g1tavgmath~g1classtype+g1schid,data = STAR.class.level)
+```
+
+
+## Hypothesis Testing
+
+```{r,echo=FALSE}
+summary(anova.fit)
+```
+
+**$H_0$**:$\alpha_i=0~\forall i$ \
+**$H_a$**:Not all $\alpha_i$'s are 0.
+
+With a p-value of $4.1\times 10^{-9}$ being less than the significance level $\alpha=0.05$, the null hypothesis is rejected. This suggests that there is a significant difference in mean math grades between various class types.
+
+***
+
+**$H_0$**:$\beta_j=0~\forall j$ \
+**$H_a$**:Not all $\alpha_j$'s are 0.
+
+We use the same significance level, $\alpha=0.05$. According to the summary table, by conducting an F-test, $P(F^*>F)<2\times10^{-16}$. Thus, the null hypothesis is rejected, indicating a significant difference in mean math grades among various school locations.
+
+## Tukey's Range Test
+
+From the coefficient table of the ANOVA Table, 'small' appears to be the class size with the highest mean math scores. Thus, we aim to establish a 95% confidence interval for the differences between 'small' and 'regular/regular+aide' classes.
+
+We will set up two hypothesis tests and assume $s_3=\mu_{\text{regular+aide}}-\mu_{\text{small}}$ and $s_2=\mu_{\text{regular}}-\mu_{\text{small}}$.
+
+* 1. $\mathbf{H_0}:~s_3>=0$  \
+    $\mathbf{H_a}:~s_3<0$
+
+* 2. $\mathbf{H_0}:~s_2>=0$  \
+    $\mathbf{H_a}:~s_2<0$
+
+```{r,echo=FALSE,fig.width=10,results='hide'}
+# Find the Ci for Tukey's Range Test
+sig.level<-0.05
+T.ci<-TukeyHSD(anova.fit,conf.level = 1-sig.level)
+par(mfrow=c(1,2))
+plot(T.ci, las=1 , col="brown")
+par(mfrow=c(1,1))
+print("CI for regular+aide-small")
+print(T.ci[["g1classtype"]]["3-1",])
+print("CI for regular-small")
+print(T.ci[["g1classtype"]]["2-1",])
+```
+
+In this project, Tukey Kramer's method is used to do the pairwise comparison. The confidence interval is calculated using this method as follows:
+$$
+\mu_i-\mu_j\pm \frac{1}{\sqrt2}q_{\alpha;k;n-k}sd(\bar \mu_i-\bar \mu_j),~i\neq j
+$$
+where q is from the studentized range distribution, $sd(\bar \mu_i-\bar \mu_j)$ represents the standard error for $\bar \mu_i-\bar \mu_j$.
+
+Since both confidence intervals (CIs) are positive, indicating that the CIs for $\frac{1}{\frac{1}{Y}}=Y$ are greater than 0, and the p-values for both cases are less than 0.001, the null hypotheses are rejected. This evidence suggests that there is a significant grade difference between small and other classes. Thus, we conclude that small classes tend to have the highest average math scaled scores with strong evidence.
+
+# Sensitivity analysis
+
+## Model Diagnostic
+
+```{r,echo=FALSE}
+# Residual Plots and QQ Plots
+par(mfrow=c(1,2))
+plot(anova.fit,which = 1)
+qqnorm(residuals(anova.fit))
+qqline(residuals(anova.fit),col = "red")
+```
+
+Since the residuals form a horizontal band with no discernible pattern, it appears that the assumption of equal variance and independent residuals holds true. However, in the Q-Q plot, the line exhibits heavy tails, indicating a violation of the normality assumption.
+
+```{r,echo=FALSE,warning=FALSE}
+# Levene's test for equal variance
+leveneTest(residuals(anova.fit)~STAR.class.level$g1classtype)
+```
+
+According to Levene's Test, the p-value$=0.1248$ is greater than $\alpha=0.05$. This result suggests that we fail to reject the null hypothesis, indicating that the assumption of equal variance holds.
+
+***
+
+```{r,echo=FALSE}
+# Shapiro-Wilk test for normality
+shapiro.test(anova.fit$residuals)
+```
+
+Since the p-value$=0.001456$ of the Shapiro-Wilk normality test is smaller than 0.05, the significance level, we reject the null hypothesis that the residuals are normally distributed.
+
+Based on the results of different tests, in order to have an unbiased model, we aim to find a method to address the violations of the normality and equal variance assumptions.
+
+## Median Aggregation
+
+Since the normality assumption is violated when using the mean as the aggregation method, we want to try using the median as a new aggregation method to maintain normality.
+
+### Two-Way ANOVA Model
+
+```{r,echo=FALSE}
+# Fit the model
+anova.fit3<-aov(g1tmedmath~g1classtype+g1schid,data = STAR.class.level)
+anova.fit4<-aov(g1tmedmath~g1classtype+g1surban,data = STAR.class.level)
+print(anova.fit4$coefficient)
+```
+
+Similar to the previous case, we opt to use the coefficient of school location to yield more descriptive results. The magnitudes of coefficients resemble those of the ANOVA model of mean math scaled scores, leading us to the same conclusion: small classes and rural schools are likely to achieve high median scaled math scores.
+
+### Box-Cox Transformation
+
+```{r,echo=FALSE}
+# Box-Cox Test
+boxcox(aov(g1tmedmath~g1classtype+g1schid,data = STAR.class.level))
+```
+
+The suggested transformation is a reciprocal transformation, $\frac{1}{x}$, for the median math scaled score according to the Box-Cox function.
+
+```{r,include=FALSE}
+# Box-Cox transformation
+STAR.class.level$g1tmedmath<-1/STAR.class.level$g1tmedmath
+```
+
+### Hypothesis Test
+
+```{r,echo=FALSE}
+# Get the summary statistic
+summary(anova.fit3)
+```
+
+$\mathbf{H_0}$:$\alpha_i=0~\forall i$ \
+$\mathbf{H_a}$:Not all $\alpha_i$'s are 0.
+
+We set the significance level $\alpha=0.05$. According to the summary table, upon conducting the F-Test, we find that $P(F^*>F)=6.36\times10^{-8}$. Thus, we reject the null hypothesis, indicating a significant difference in median math grades between various class types.
+
+***
+
+$\mathbf{H_0}$:$\beta_j=0~\forall j$ \
+$\mathbf{H_a}$:Not all $\alpha_j$'s are 0.
+
+We use the same significance level, $\alpha=0.05$. According to the summary table, after performing the F-Test, we find that $P(F^*>F)<2\times10^{-16}$. Thus, we reject the null hypothesis, indicating a significant difference in median math grades between various school locations.
+
+### Model Diagnostic
+
+```{r,echo=FALSE}
+# Residual Plots and QQ Plots
+par(mfrow=c(1,2))
+plot(anova.fit3,which = 1)
+qqnorm(residuals(anova.fit3))
+qqline(residuals(anova.fit3),col = "red")
+```
+
+By employing median aggregation, the new ANOVA model is likely to uphold the assumptions of independence and homoscedasticity, as the residual plot exhibits no discernible pattern, similar to the previous one. Additionally, its Q-Q plot appears to be approximately linear, suggesting that the normality assumption may hold. To confirm this, we intend to conduct another Shapiro's test.
+
+```{r,echo=FALSE}
+# Shapiro-Wilk test for normality
+shapiro.test(anova.fit3$residuals)
+```
+
+Since the p-value of $0.1295$ is greater than $\alpha=0.05$, we can conclude that the normality assumption is upheld.
+
+```{r,echo=FALSE}
+# Levene's test for equal variance
+leveneTest(residuals(anova.fit3)~STAR.class.level$g1classtype)
+```
+
+According to Levene's Test, the p-value of $0.01644$ is significantly less than $\alpha=0.05$, providing strong evidence to suggest that variances are not equal across all groups. This discrepancy could potentially lead to inaccuracies in the hypothesis tests. Therefore, the author intends to explore alternative fitting methods.
+
+## Mixed Effect Model
+
+In the residual plot above of the ANOVA model regarding median math grade, although there is no clear indication of unequal variance, Levene's Test consistently indicates a violation of the homoscedasticity assumption. In fact, compared to other schools, some schools have fewer classes participating in the STAR program, potentially leading to unexpected biased variances after data aggregation. If this hypothesis is true, it suggests that the effects across all schools are not fixed but random. Therefore, we aim to establish a mixed-effects Two-Way ANOVA model with median math scores to investigate further.
+
+### Hypothesis Test
+
+```{r,include=FALSE,warning=FALSE}
+# Fit the model and find the its summary statistic
+anova.fit5<-lmer(g1tmedmath~g1classtype+(1|g1schid),data = STAR.class.level)
+summary(anova.fit5)
+confint(anova.fit5)
+```
+
+$\mathbf{H_0}:\sigma_\mu^2=0$ (Random effects do not exist) \
+$\mathbf{H_a}:\sigma_\mu^2\neq 0$ (Random effects exist)
+
+The proportion of variability is equal to $\frac{4.975}{4.975+3.834}=0.5648$, which is far greater than 0, and the 95% confidence interval $[5.81\times 10^{-5},8.51\times 10^{-5}]$ does not contain 0. Hence, the random effect exists.
+
+***
+
+$\mathbf{H_0}$:$\alpha_i=0~\forall i$ \
+$\mathbf{H_a}$:Not all $\alpha_i$'s are 0.
+
+Since the 2-tailed critical t-value for $\alpha=0.05$ with 339 observations is 1.967, and the t-statistics for the three class types are ${188.461,5.264,5.180}$, which are far larger than the critical value, the null hypothesis is rejected. Thus, the treatment effect between class types and median math grades exists. Additionally, since the 95% confidence interval of the small class, $[1.84\times 10^{-3},1.88\times 10^{-3}]$, is much larger than the other two, $[2.69\times 10^{-5},5.88\times 10^{-5}]$ and $[2.72\times 10^{-5},6.03\times 10^{-5}]$, there is strong evidence to suggest that the small class should consistently have the best median math scaled grade.
+
+### Model Diagnostic
+
+```{r,echo=FALSE,warning=FALSE}
+# Residual Plots and QQ Plots
+par(mfrow=c(1,2))
+plot(fitted(anova.fit5),residuals(anova.fit5))
+abline(h=0,col = "gray")
+qqnorm(residuals(anova.fit5))
+qqline(residuals(anova.fit5),col = "red")
+```
+
+From the residual plot, no clear pattern is observed, and the residuals form a band-like shape, indicating that the independence and homoscedasticity assumptions are highly likely to hold.
+
+```{r,include=FALSE}
+# Levene's test for equal variance
+leveneTest(residuals(anova.fit5)~STAR.class.level$g1classtype)
+```
+```{r,,include=FALSE}
+# Shapiro-Wilk test for normality
+shapiro.test(residuals(anova.fit5))
+```
+
+The p-value from Shapiro's test is 0.6907, which is significantly larger than the significance level $\alpha=0.05$, indicating satisfaction of the normality assumption. The p-value of Levene's Test is 0.05396, slightly higher than our significance level. Thus, we fail to reject the null hypothesis from Levene's Test, suggesting that equal variance is upheld.
+
+# Discussion
+
+After conducting exploratory data analysis and fitting three models, it was found that a treatment effect exists between class size and academic performance across all classes. In conclusion, students in small classes exhibit the best average academic performance, as determined by utilizing the 95% confidence intervals from the mixed effect model.
+
+However, there are limitations to this project. It should be noted that there is still weak evidence suggesting that the variances are not equal in the mixed effect model, potentially leading to inaccurate results in the T-tests. In the future, exploring different models may yield better fitting results without violating assumptions. Additionally, the inclusion of STAR data from kindergarten may impact the analysis and fitting results, potentially providing different outcomes. Lastly, the risk of having insufficient samples in some classes still exists, potentially biasing the aggregated data at the class level and producing inaccurate results. To address this issue, in the future, either removing these classes or providing more data about students in these classes may result in a more reliable dataset.
+
+# Code Appendix
+
+```{r getlabels, echo = FALSE}
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup","getlabels","allcode")]
+```
+
+```{r allcode, ref.label = labs, eval = FALSE}
+```
+
+# Acknowledgement {.unnumbered}
+
+Having Group Discussion with: Zichun Hu
+[[zichu\@ucdavis.edu](mailto:zichu@ucdavis.edu){.email}]; Mingqian Zhang
+[[pazhang\@ucdavis.edu](mailto:pazhang@ucdavis.edu){.email}]; Jingzhi
+Sun [[edsun\@ucdavis.edu](mailto:edsun@ucdavis.edu){.email}] ;Zhengqian
+Cui [[zhqcui\@ucdavis.edu](mailto:zhqcui@ucdavis.edu){.email}].
+
+Using the STA 207 lecture notes and videos via
+Canvas(<https://nbviewer.org/github/ChenShizhe/StatDataScience/blob/master/Notes/Chapter4ANOVAII.ipynb>)
+
+Using ChatGPT for grammar and phrase check.
+
+# Reference {.unnumbered}
+
+Imbens, G., & Rubin, D. (2015). Stratified Randomized Experiments. In
+Causal Inference for Statistics, Social, and Biomedical Sciences: An
+Introduction (pp. 187-218). Cambridge: Cambridge University Press.
+<doi:10.1017/CBO9781139025751.010>
+
+Achilles, C. M. (2012). Class-size policy the STAR experiment and related class-size studies. NCPEA policy brief. volume 1, number 2 (Vol. 1). Distributed by ERIC Clearinghouse. 
+
+# Session info {.unnumbered}
+
+[Report information of your `R` session for
+reproducibility.]{style="color:blue"}
+
+```{r}
+sessionInfo()
+```
