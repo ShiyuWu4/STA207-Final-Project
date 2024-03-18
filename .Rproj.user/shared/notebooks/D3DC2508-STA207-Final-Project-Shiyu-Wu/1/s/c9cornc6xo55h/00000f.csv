@@ -1,0 +1,98 @@
+"0","# Loading all libraries and data"
+"0","library(AER)"
+"2","Warning: 程辑包‘AER’是用R版本4.3.2 来建造的"
+"2","载入需要的程辑包：car
+"
+"2","Warning: 程辑包‘car’是用R版本4.3.2 来建造的"
+"2","载入需要的程辑包：carData
+"
+"2","Warning: 程辑包‘carData’是用R版本4.3.2 来建造的"
+"2","载入需要的程辑包：lmtest
+"
+"2","Warning: 程辑包‘lmtest’是用R版本4.3.2 来建造的"
+"2","载入需要的程辑包：zoo
+"
+"2","Warning: 程辑包‘zoo’是用R版本4.3.2 来建造的"
+"2","
+载入程辑包：‘zoo’
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+"
+"2","载入需要的程辑包：sandwich
+"
+"2","Warning: 程辑包‘sandwich’是用R版本4.3.2 来建造的"
+"2","载入需要的程辑包：survival
+"
+"0","library(dplyr)"
+"2","Warning: 程辑包‘dplyr’是用R版本4.3.2 来建造的"
+"2","
+载入程辑包：‘dplyr’
+
+"
+"2","The following object is masked from ‘package:car’:
+
+    recode
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(ggplot2)"
+"2","Warning: 程辑包‘ggplot2’是用R版本4.3.2 来建造的"
+"0","library(SuppDists)"
+"2","Warning: 程辑包‘SuppDists’是用R版本4.3.2 来建造的"
+"0","library(haven)"
+"2","Warning: 程辑包‘haven’是用R版本4.3.3 来建造的"
+"0","library(naniar)"
+"2","Warning: 程辑包‘naniar’是用R版本4.3.3 来建造的"
+"0","library(s20x)"
+"2","Warning: 程辑包‘s20x’是用R版本4.3.3 来建造的"
+"2","
+载入程辑包：‘s20x’
+
+"
+"2","The following object is masked from ‘package:car’:
+
+    levene.test
+
+"
+"0","library(car)"
+"0","library(lme4)"
+"2","Warning: 程辑包‘lme4’是用R版本4.3.2 来建造的"
+"2","载入需要的程辑包：Matrix
+"
+"2","Warning: 程辑包‘Matrix’是用R版本4.3.2 来建造的"
+"0","library(MASS)"
+"2","
+载入程辑包：‘MASS’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    select
+
+"
+"0","STAR<-read_sav(""STAR_Students.sav"")"
+"1","Failed to find G1READ_A
+"
+"1","Failed to find G1MATH_A
+"
+"1","Failed to find G2READ_A
+"
+"1","Failed to find G2MATH_A
+"
+"1","Failed to find G3READ_A
+"
+"1","Failed to find G3MATH_A
+"

@@ -1,0 +1,2 @@
+"0","# Box-Cox Test"
+"0","boxcox(aov(g1tmedmath~g1classtype+g1schid,data = STAR.class.level))"

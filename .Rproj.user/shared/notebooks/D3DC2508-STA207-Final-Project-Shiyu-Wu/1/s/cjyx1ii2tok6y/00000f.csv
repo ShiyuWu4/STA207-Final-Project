@@ -1,0 +1,5 @@
+"0","# Find the Ci for Tukey's Range Test"
+"0","sig.level<-0.05"
+"0","T.ci<-TukeyHSD(anova.fit,conf.level = 1-sig.level)"
+"0","par(mfrow=c(1,2))"
+"0","plot(T.ci, las=1 , col=""brown"")"

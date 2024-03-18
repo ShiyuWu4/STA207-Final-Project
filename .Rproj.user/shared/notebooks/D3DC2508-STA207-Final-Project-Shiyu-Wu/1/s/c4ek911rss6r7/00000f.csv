@@ -1,0 +1,3 @@
+"0","# Box-Cox Transformation and fit the model"
+"0","STAR.class.level$g1tavgmath<-1/STAR.class.level$g1tavgmath"
+"0","anova.fit<-aov(g1tavgmath~g1classtype+g1schid,data = STAR.class.level)"

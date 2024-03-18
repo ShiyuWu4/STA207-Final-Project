@@ -3022,8 +3022,8 @@ Testing</h2>
 ## Residuals   261 8.809e-07 3.380e-09                    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
-<p><strong><span class="math inline">\(H_0\)</span></strong>:<span class="math inline">\(\alpha_i=0~\forall i\)</span><br />
-<strong><span class="math inline">\(H_a\)</span></strong>:Not all <span class="math inline">\(\alpha_i\)</span>’s are 0.</p>
+<p><span class="math inline">\(\mathbf{H_0}\)</span>:<span class="math inline">\(\alpha_i=0~\forall i\)</span><br />
+<span class="math inline">\(\mathbf{H_a}\)</span>:Not all <span class="math inline">\(\alpha_i\)</span>’s are 0.</p>
 <p>With a p-value of <span class="math inline">\(4.1\times
 10^{-9}\)</span> being less than the significance level <span class="math inline">\(\alpha=0.05\)</span>, the null hypothesis is
 rejected. This suggests that there is a significant difference in mean
@@ -3195,9 +3195,91 @@ unexpected biased variances after data aggregation. If this hypothesis
 is true, it suggests that the effects across all schools are not fixed
 but random. Therefore, we aim to establish a mixed-effects Two-Way ANOVA
 model with median math scores to investigate further.</p>
+<p>The mixed effect model is set up as below:</p>
+<p><span class="math display">\[
+Y_{ijk}=\mu_{..}+\alpha_i+\beta_j+\epsilon_{ijk}
+\]</span></p>
+<ul>
+<li><p><span class="math inline">\(i\)</span> represents the level of
+the class type, where <span class="math inline">\(i=1\)</span> implies
+the small-size class, <span class="math inline">\(i=2\)</span> implies
+the regular class, and <span class="math inline">\(i=3\)</span> implies
+the regular class with an aide.</p></li>
+<li><p><span class="math inline">\(j\)</span> represents the level of
+the school type. Since there are 72 schools in total, <span class="math inline">\(j\)</span> ranges from 1 to 72.</p></li>
+<li><p><span class="math inline">\(Y_{ijk}\)</span> is the dependent
+variable in this model, representing the average math scaled scores for
+the <span class="math inline">\(k\)</span>th teacher with the <span class="math inline">\(i\)</span>th class type in the <span class="math inline">\(j\)</span>th school.</p></li>
+<li><p><span class="math inline">\(\mu_{..}\)</span> is the overall
+average math scaled score across all class types and schools, calculated
+as <span class="math inline">\(\mu_{..}=\frac{1}{3n_j}\sum_{i=1}^3\sum_{j=1}^{n_j}\mu_{ij}\)</span>.</p></li>
+<li><p><span class="math inline">\(\alpha_i\)</span> represents the
+fixed effect of the <span class="math inline">\(i\)</span>th class
+type.</p></li>
+<li><p><span class="math inline">\(\beta_j\)</span> represents the
+random effect of the <span class="math inline">\(j\)</span>th school
+type.</p></li>
+<li><p><span class="math inline">\(\epsilon_{ijk}\)</span> represents
+the random error for the <span class="math inline">\(k\)</span>th
+teacher with the <span class="math inline">\(i\)</span>th class type in
+the <span class="math inline">\(j\)</span>th school.</p></li>
+</ul>
+<p>Assumptions:</p>
+<ul>
+<li><p><span class="math inline">\(\epsilon_{ijk}\sim
+N(0,\sigma^2)\)</span>, where <span class="math inline">\(\sigma^2\)</span> is a constant. Each <span class="math inline">\(\epsilon_{i,j,k}\)</span> should be independent of
+each other.</p></li>
+<li><p>To satisfy the requirement of a randomized experiment, the
+observations (average math scaled scores) are independent across all
+groups.</p></li>
+<li><p>The residuals should be normally distributed across all
+groups.</p></li>
+<li><p>The variance of the average math scaled scores across all groups
+should be normally distributed.</p></li>
+</ul>
+<p>Constraints:</p>
+<ul>
+<li><p><span class="math inline">\(\sum_{i=1}^3\alpha_i=0\)</span></p></li>
+<li><p><span class="math inline">\(\beta_j \sim
+N(0,\sigma_\beta^2)\)</span> and <span class="math inline">\(\beta_j\)</span> are i.i.d</p></li>
+</ul>
+<hr />
 <div id="hypothesis-test-1" class="section level3" number="6.3.1">
 <h3><span class="header-section-number">6.3.1</span> Hypothesis
 Test</h3>
+<pre><code>## Linear mixed model fit by REML [&#39;lmerMod&#39;]
+## Formula: g1tmedmath ~ g1classtype + (1 | g1schid)
+##    Data: STAR.class.level
+## 
+## REML criterion at convergence: -5402.8
+## 
+## Scaled residuals: 
+##      Min       1Q   Median       3Q      Max 
+## -2.78678 -0.56671  0.03786  0.63015  2.56426 
+## 
+## Random effects:
+##  Groups   Name        Variance  Std.Dev. 
+##  g1schid  (Intercept) 4.975e-09 7.054e-05
+##  Residual             3.834e-09 6.192e-05
+## Number of obs: 339, groups:  g1schid, 76
+## 
+## Fixed effects:
+##               Estimate Std. Error t value
+## (Intercept)  1.862e-03  9.881e-06 188.461
+## g1classtype2 4.282e-05  8.135e-06   5.264
+## g1classtype3 4.378e-05  8.452e-06   5.180
+## 
+## Correlation of Fixed Effects:
+##             (Intr) g1cls2
+## g1classtyp2 -0.394       
+## g1classtyp3 -0.378  0.457</code></pre>
+<pre><code>## Computing profile confidence intervals ...</code></pre>
+<pre><code>##                     2.5 %       97.5 %
+## .sig01       5.805801e-05 8.509250e-05
+## .sigma       5.676263e-05 6.736338e-05
+## (Intercept)  1.842853e-03 1.881673e-03
+## g1classtype2 2.688370e-05 5.876628e-05
+## g1classtype3 2.717577e-05 6.031777e-05</code></pre>
 <p><span class="math inline">\(\mathbf{H_0}:\sigma_\mu^2=0\)</span>
 (Random effects do not exist)<br />
 <span class="math inline">\(\mathbf{H_a}:\sigma_\mu^2\neq 0\)</span>
@@ -3208,11 +3290,23 @@ does not contain 0. Hence, the random effect exists.</p>
 <hr />
 <p><span class="math inline">\(\mathbf{H_0}\)</span>:<span class="math inline">\(\alpha_i=0~\forall i\)</span><br />
 <span class="math inline">\(\mathbf{H_a}\)</span>:Not all <span class="math inline">\(\alpha_i\)</span>’s are 0.</p>
-<p>Since the 2-tailed critical t-value for <span class="math inline">\(\alpha=0.05\)</span> with 339 observations is
-1.967, and the t-statistics for the three class types are <span class="math inline">\({188.461,5.264,5.180}\)</span>, which are far
-larger than the critical value, the null hypothesis is rejected. Thus,
-the treatment effect between class types and median math grades exists.
-Additionally, since the 95% confidence interval of the small class,
+<p>To test the existence of fixed effect, F-Test is no long appropriate,
+so Likelihood Ratio Test (LRT) is applied here. The LRT test is base on
+the below formula: <span class="math display">\[
+\lambda=-2\times ln[\frac{sup_{\alpha\in
+\alpha_0}L(\alpha)}{sup_{\alpha\in \alpha}L(\alpha)}]\sim \chi^2_{2}
+\]</span></p>
+<p>In this case, <span class="math inline">\(\alpha\in \alpha_0\)</span>
+represents <span class="math inline">\(\alpha_i=0 ~\forall i\)</span>,
+and <span class="math inline">\(\alpha \in \alpha\)</span> represents
+<span class="math inline">\(\alpha_i \in \mathbb{R}~\forall i\)</span>.
+Thus, the <span class="math inline">\(L(\alpha)\)</span> at the
+numerator is the model without the fixed effect, and the <span class="math inline">\(L(\alpha)\)</span> at the denominator is the full
+model.</p>
+<p>Based on the result of LRT, the p-value<span class="math inline">\(=2.379\times 10^{-8}\)</span>, and it is far less
+than the significance level <span class="math inline">\(\alpha=0.05\)</span>. Therefore, fixed effect is
+significant with strong evidences.</p>
+<p>Additionally, since the 95% confidence interval of the small class,
 <span class="math inline">\([1.84\times 10^{-3},1.88\times
 10^{-3}]\)</span>, is much larger than the other two, <span class="math inline">\([2.69\times 10^{-5},5.88\times 10^{-5}]\)</span>
 and <span class="math inline">\([2.72\times 10^{-5},6.03\times
@@ -3376,6 +3470,8 @@ leveneTest(residuals(anova.fit3)~STAR.class.level$g1classtype)
 anova.fit5&lt;-lmer(g1tmedmath~g1classtype+(1|g1schid),data = STAR.class.level)
 summary(anova.fit5)
 confint(anova.fit5)
+anova.fit6&lt;-lmer(g1tmedmath~(1|g1schid),data = STAR.class.level)
+anova(anova.fit5,anova.fit6,test=&quot;Chisq&quot;)
 # Residual Plots and QQ Plots
 par(mfrow=c(1,2))
 plot(fitted(anova.fit5),residuals(anova.fit5))

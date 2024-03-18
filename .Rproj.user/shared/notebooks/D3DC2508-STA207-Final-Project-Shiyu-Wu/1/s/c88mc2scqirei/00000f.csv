@@ -1,0 +1,3 @@
+"0","# Residual Plots and QQ Plots"
+"0","par(mfrow=c(1,2))"
+"0","plot(anova.fit,which = 1)"

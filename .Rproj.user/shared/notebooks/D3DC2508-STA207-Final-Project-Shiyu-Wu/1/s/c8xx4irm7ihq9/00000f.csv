@@ -1,0 +1,4 @@
+"0","# Box-plot and violin plot for math grade v.s. class type"
+"0","ggplot(STAR.class.level,aes(x=g1classtype,y=g1tavgmath))+geom_boxplot()+"
+"0","  labs(x="""",y=""Average Math Grade"")+"
+"0","  stat_summary(fun=""mean"")"
